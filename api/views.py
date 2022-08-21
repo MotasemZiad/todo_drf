@@ -8,6 +8,7 @@ from .serializers import TaskSerializer
 
 @api_view(['GET'])
 def api_overview(request):
+
     api_urls = {
         'List': '/task-list/',
         'Detail View': '/task-detail/<int:id>/',
