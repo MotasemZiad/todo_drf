@@ -5,7 +5,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>To-Do Tasks</title>
-    <!-- Bootstrap CSS only -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
     rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx"
     crossorigin="anonymous">
@@ -93,7 +92,159 @@
 	</div>
 
     <script type="text/javascript" >
-        
+
+      function getCookie(name) {
+		    var cookieValue = null;
+		    if (document.cookie && document.cookie !== '') {
+		        var cookies = document.cookie.split(';');
+		        for (var i = 0; i < cookies.length; i++) {
+		            var cookie = cookies[i].trim();
+		            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+		                break;
+		            }
+		        }
+		    }
+		    return cookieValue;
+		  }
+      var csrftoken = getCookie('csrftoken')
+      var activeItem = null
+      var list_snapshot = []
+
+
+      buildList()
+      function buildList(){
+          var wrapper = document.getElementById('list-wrapper')
+          var url = 'http://localhost:8000/api/task-list/'
+
+          fetch(url)
+          .then((response) => response.json())
+          .then(function(data) {
+              var list = data
+              for(var i in list){
+
+                try{
+                  document.getElementById(`data-row-${i}`).remove()
+                }catch(error){
+                  console.log(error)
+                }
+
+                var title = `<span class="title">${list[i].title}</span>`
+
+                if(list[i].completed){
+                  title = `<strike class="title">${list[i].title}</strike>`
+                }
+                var item = `
+                  <div id="data-row-${i}" class="task-wrapper flex-wrapper">
+                    <div style="flex:7">
+                      ${title}
+                    </div>
+                    <div style="flex:1">
+                      <button class="btn btn-sm btn-outline-info edit">Edit </button>
+                    </div>
+                    <div style="flex:1">
+                      <button class="btn btn-sm btn-outline-dark delete">-</button>
+                    </div>
+                  </div>
+                `
+
+                wrapper.innerHTML += item
+              }
+
+              if (list_snapshot.length > list.length){
+                for (var i = list.length; i < list_snapshot.length; i++){
+                  document.getElementById(`data-row-${i}`).remove()
+                }
+              }
+              list_snapshot = list
+
+              for (var i in list){
+                var editButton = document.getElementsByClassName('edit')[i]
+                var deleteButton = document.getElementsByClassName('delete')[i]
+                var title = document.getElementsByClassName('title')[i]
+
+
+                editButton.addEventListener('click', (function(item){
+                    return function(){
+                      editItem(item)
+                    }
+                })(list[i]))
+
+                deleteButton.addEventListener('click', (function(item){
+                    return function(){
+                      deleteItem(item)
+                    }
+                })(list[i]))
+
+               title.addEventListener('click', (function(item){
+                    return function(){
+                      toggleStrike(item)
+                    }
+                })(list[i]))
+                
+              }
+          }) 
+
+        }
+
+      var form = document.getElementById('form-wrapper')
+      form.addEventListener('submit', function(e){
+        e.preventDefault()
+        var url = 'http://localhost:8000/api/task-create/'
+
+        if(activeItem != null){
+          var url = `http://localhost:8000/api/task-update/${activeItem.id}/`
+          activeItem = null
+        }
+
+
+        var title = document.getElementById('title').value
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+          },
+          body: JSON.stringify({'title': title})
+        }).then(function(response){
+          buildList()
+          document.getElementById('form').reset()
+        })
+      })
+
+      function editItem(item){
+        activeItem = item
+        document.getElementById('title').value = activeItem.title
+      }
+
+      function deleteItem(item){
+        fetch(`http://localhost:8000/api/task-delete/${item.id}/`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+          }
+        }).then((response) => {
+          buildList()
+        })
+      }
+      
+      function toggleStrike(item){
+        fetch(`http://localhost:8000/api/task-update/${item.id}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+          },
+          body: JSON.stringify({
+            'title': item.title,
+            'completed': !item.completed,
+          })
+        }).then((response) => {
+          buildList()
+        })
+      }
+
     </script>
 </body>
 </html>
